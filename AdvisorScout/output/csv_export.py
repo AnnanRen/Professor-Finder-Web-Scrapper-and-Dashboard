@@ -28,9 +28,11 @@ def _load_universities():
 
 def _get_university_info(university: str):
     """Look up country and region for a university from universities.json."""
+    if not university:
+        return None
     data = _load_universities()
     for uni in data.get("universities", []):
-        if uni["name"].lower() == university.lower():
+        if uni.get("name", "").lower() == university.strip().lower():
             return uni
     return None
 
