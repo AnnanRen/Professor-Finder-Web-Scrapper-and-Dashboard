@@ -30,6 +30,7 @@ from config import (
 from matcher import KeywordMatcher
 from output.html_report import generate_html_report
 from output.csv_export import export_csv
+from scraper.cloak_fetcher import CloakFetcher
 
 UNIVERSITIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "universities.json")
 
@@ -101,6 +102,7 @@ class ProfessorFinder:
             "last_update": datetime.now().isoformat()
         }
         self._save_status()
+        self.cloak = CloakFetcher(headless=True, humanize=True)
 
     def _load_cache(self):
         """Load previously found professors from cache."""
@@ -169,12 +171,18 @@ class ProfessorFinder:
         self._save_status()
 
     def fetch_page(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch and parse a web page."""
+        """Fetch and parse a web page, falling back to CloakBrowser if blocked."""
         time.sleep(REQUEST_DELAY)
         try:
             resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
             return BeautifulSoup(resp.text, "lxml")
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code in (403, 429):
+                logger.info(f"Blocked ({e.response.status_code}), retrying with CloakBrowser: {url}")
+                return self.cloak.fetch(url)
+            logger.warning(f"Failed to fetch {url}: {e}")
+            return None
         except Exception as e:
             logger.warning(f"Failed to fetch {url}: {e}")
             return None
