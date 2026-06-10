@@ -220,8 +220,8 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 .meta-tag{{font-size:0.7rem;padding:4px 10px;border-radius:6px;font-weight:600}}
 .country-tag{{background:rgba(72,219,251,0.1);color:var(--blue);border:1px solid rgba(72,219,251,0.2)}}
 .rank-tag{{background:rgba(255,159,67,0.1);color:var(--orange);border:1px solid rgba(255,159,67,0.2)}}
-.cards-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:1.5rem}}
-.card{{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.75rem;transition:all .3s ease;display:flex;flex-direction:column;position:relative;overflow:hidden}}
+.cards-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}}
+.card{{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1rem 1.2rem;transition:all .3s ease;display:flex;flex-direction:column;position:relative;overflow:hidden}}
 .card::before{{content:'';position:absolute;top:0;left:0;width:4px;height:0;background:var(--accent);transition:height .3s}}
 .card:hover{{transform:translateY(-5px);box-shadow:0 12px 40px rgba(0,0,0,0.4);border-color:rgba(125,95,255,0.3)}}
 .card:hover::before{{height:100%}}
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', initLanguage);
 
 <div class="main-content">
   <div class="container" id="report-container">
-    {professor_cards}
+    <div class="cards-grid">{professor_cards}</div>
   </div>
 </div>
 
