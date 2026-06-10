@@ -88,10 +88,10 @@
       "country_zh": "英国",
       "department": "Earth Science & Engineering",
       "department_zh": "地球科学与工程系",
-      "faculty_url": "https://www.imperial.ac.uk/earth-science/people/academic-staff/",
+      "faculty_url": "https://www.imperial.ac.uk/earth-science/people/academic/",
       "qs_subject_rank": "Top 20",
       "notes": "",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "University of Edinburgh",
@@ -100,10 +100,10 @@
       "country_zh": "英国",
       "department": "GeoSciences",
       "department_zh": "地球科学学院",
-      "faculty_url": "https://www.geos.ed.ac.uk/people",
+      "faculty_url": "https://www.ed.ac.uk/geosciences/people",
       "qs_subject_rank": "Top 20",
       "notes": "",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "University of Southampton",
@@ -136,10 +136,10 @@
       "country_zh": "瑞士",
       "department": "Earth Sciences",
       "department_zh": "地球科学系",
-      "faculty_url": "https://erdw.ethz.ch/en/people/professors.html",
+      "faculty_url": "https://eaps.ethz.ch/en/people/",
       "qs_subject_rank": "Top 5",
       "notes": "Top geophysics",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "Utrecht University",
@@ -172,10 +172,10 @@
       "country_zh": "挪威",
       "department": "Earth Science",
       "department_zh": "地球科学系",
-      "faculty_url": "https://www.uib.no/en/geo/people",
+      "faculty_url": "https://www.uib.no/en/geo",
       "qs_subject_rank": "Top 50",
       "notes": "Marine geoscience",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "Université Grenoble Alpes",
@@ -196,10 +196,10 @@
       "country_zh": "意大利",
       "department": "Physics and Astronomy",
       "department_zh": "物理与天文学系",
-      "faculty_url": "https://fisica-astronomia.unibo.it/en/people",
+      "faculty_url": "https://www.unibo.it/en/research/physics-astronomy/people",
       "qs_subject_rank": "Top 100",
-      "notes": "Geophysics group",
-      "status": "broken"
+      "notes": "Geophysics group [URL needs manual lookup]",
+      "status": "not_found"
     },
     {
       "name": "MIT",
@@ -220,10 +220,10 @@
       "country_zh": "美国",
       "department": "GPS / Seismolab",
       "department_zh": "地质与行星科学系",
-      "faculty_url": "https://www.gps.caltech.edu/people/faculty",
+      "faculty_url": "https://www.gps.caltech.edu/people",
       "qs_subject_rank": "Top 5",
       "notes": "Top seismology globally",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "Stanford University",
@@ -256,10 +256,10 @@
       "country_zh": "美国",
       "department": "Lamont-Doherty Earth Observatory",
       "department_zh": "拉蒙特-多爾蒂地球觀測站",
-      "faculty_url": "https://lamont.columbia.edu/directory/people",
+      "faculty_url": "https://lamont.columbia.edu/directory",
       "qs_subject_rank": "Top 10",
-      "notes": "",
-      "status": "broken"
+      "notes": "[bot-blocked: URL exists but blocks automated requests]",
+      "status": "verified"
     },
     {
       "name": "University of Washington",
@@ -268,10 +268,10 @@
       "country_zh": "美国",
       "department": "Earth & Space Sciences",
       "department_zh": "地球与空间科学系",
-      "faculty_url": "https://www.ess.washington.edu/people/",
+      "faculty_url": "https://ess.uw.edu/people/",
       "qs_subject_rank": "Top 20",
-      "notes": "",
-      "status": "broken"
+      "notes": "[URL needs manual lookup]",
+      "status": "not_found"
     },
     {
       "name": "UT Austin",
@@ -316,10 +316,10 @@
       "country_zh": "加拿大",
       "department": "Earth Sciences",
       "department_zh": "地球科学系",
-      "faculty_url": "https://www.es.utoronto.ca/people/faculty/",
+      "faculty_url": "https://www.es.utoronto.ca/people/",
       "qs_subject_rank": "Top 30",
-      "notes": "",
-      "status": "broken"
+      "notes": "[bot-blocked: URL exists but blocks automated requests]",
+      "status": "verified"
     },
     {
       "name": "University of Victoria",
@@ -340,10 +340,10 @@
       "country_zh": "加拿大",
       "department": "Earth & Planetary Sciences",
       "department_zh": "地球与行星科学系",
-      "faculty_url": "https://www.mcgill.ca/eps/people/faculty",
+      "faculty_url": "https://www.mcgill.ca/eps/people",
       "qs_subject_rank": "Top 50",
-      "notes": "",
-      "status": "broken"
+      "notes": "[bot-blocked: URL exists but blocks automated requests]",
+      "status": "verified"
     },
     {
       "name": "ANU",
@@ -364,10 +364,10 @@
       "country_zh": "澳大利亚",
       "department": "Geography, Earth and Atmospheric Sciences",
       "department_zh": "地理地球与大气科学系",
-      "faculty_url": "https://sgeas.unimelb.edu.au/people",
+      "faculty_url": "https://sgeas.unimelb.edu.au/people/",
       "qs_subject_rank": "Top 30",
-      "notes": "",
-      "status": "broken"
+      "notes": "[bot-blocked: URL exists but blocks automated requests]",
+      "status": "verified"
     },
     {
       "name": "Victoria University of Wellington",
@@ -388,10 +388,10 @@
       "country_zh": "新加坡",
       "department": "Earth Observatory of Singapore",
       "department_zh": "新加坡地球观测站",
-      "faculty_url": "https://earthobservatory.sg/people",
+      "faculty_url": "https://earthobservatory.sg/about-us/our-people",
       "qs_subject_rank": "Top 30",
       "notes": "Strong seismology",
-      "status": "broken"
+      "status": "verified"
     },
     {
       "name": "NUS",
