@@ -10,12 +10,37 @@ from typing import List, Dict
 from datetime import datetime
 
 from models import Professor
+import os, json
 
-try:
-    from config import get_rank_bracket
-except ImportError:
-    def get_rank_bracket(university: str) -> str:
-        return "Geo"
+_UNI_DATA = None
+
+def _load_uni_data():
+    global _UNI_DATA
+    if _UNI_DATA is None:
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "universities.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                _UNI_DATA = json.load(f)
+        except Exception:
+            _UNI_DATA = {"universities": []}
+    return _UNI_DATA
+
+def _get_uni_info(university: str):
+    """Look up country and QS rank for a university from universities.json."""
+    data = _load_uni_data()
+    for u in data.get("universities", []):
+        if u.get("name", "").lower() == university.lower():
+            return u
+    return {}
+
+COUNTRY_DISPLAY = {
+    "US": "America", "UK": "UK", "Australia": "Australia",
+    "Canada": "Canada", "New Zealand": "New Zealand",
+    "Singapore": "Singapore", "Hong Kong": "Hong Kong",
+    "Switzerland": "Switzerland", "Netherlands": "Netherlands",
+    "Germany": "Germany", "Norway": "Norway", "France": "France",
+    "Italy": "Italy",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +56,11 @@ def generate_html_report(professors: List[Professor], output_path: str):
 
     professor_cards = ""
     for uni, profs in sorted(by_uni.items()):
-        bracket = get_rank_bracket(uni)
-        country = _get_country(uni)
+        info = _get_uni_info(uni)
+        country_code = info.get("country", _get_country(uni))
+        country_display = COUNTRY_DISPLAY.get(country_code, country_code)
+        qs_rank = info.get("qs_subject_rank", "")
+        country_lower = country_code.lower()
         
         cards_html = ""
         for p in sorted(profs, key=lambda x: x.match_score, reverse=True):
@@ -73,29 +101,31 @@ def generate_html_report(professors: List[Professor], output_path: str):
             bio_html = f'<p class="bio">{_esc(p.bio[:400])}</p>' if p.bio else ""
 
             cards_html += f'''
-<div class="card" data-score="{p.match_score}" data-name="{_esc(p.name.lower())}" data-uni="{_esc(p.university.lower())}" data-interests="{_esc(' '.join(p.research_interests).lower())}" data-country="{country.lower()}">
-  <div class="card-header">
+<div class="card collapsed" data-score="{p.match_score}" data-name="{_esc(p.name.lower())}" data-uni="{_esc(p.university.lower())}" data-interests="{_esc(' '.join(p.research_interests).lower())}" data-country="{country_lower}">
+  <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
     <div><h3 class="prof-name">{_esc(p.name)}</h3>
-    <p class="prof-title">{_esc(p.title or 'Faculty')}</p></div>
+    <p class="prof-title">{country_display} | {_esc(uni)}{(' (' + qs_rank + ')' if qs_rank else '')}</p></div>
     <span class="badge {badge_class}">{p.match_level} ({p.match_score})</span>
   </div>
+  <div class="card-body">
   {metrics}
   {interests_html}
   <div class="actions">{email_html} {profile_html} {scholar_html}</div>
   {matched_html}
   {bio_html}
   {pubs_section}
+  </div>
 </div>'''
 
         professor_cards += f'''
-<div class="uni-group" data-country="{country.lower()}">
+<div class="uni-group" data-country="{country_lower}">
   <h2 class="uni-name">
     <div class="uni-header-main">
         {_esc(uni)} <span class="count">({len(profs)} professors)</span>
     </div>
     <div class="uni-meta">
-        <span class="meta-tag country-tag">{country}</span>
-        <span class="meta-tag rank-tag">{bracket}</span>
+        <span class="meta-tag country-tag">{country_display}</span>
+        <span class="meta-tag rank-tag">{qs_rank}</span>
     </div>
   </h2>
   <div class="cards-grid">{cards_html}</div>
@@ -185,7 +215,11 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 .card::before{{content:'';position:absolute;top:0;left:0;width:4px;height:0;background:var(--accent);transition:height .3s}}
 .card:hover{{transform:translateY(-5px);box-shadow:0 12px 40px rgba(0,0,0,0.4);border-color:rgba(125,95,255,0.3)}}
 .card:hover::before{{height:100%}}
-.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}}
+.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;cursor:pointer;user-select:none}}
+.card-header::after{{content:'▾';font-size:1.2rem;color:var(--text2);transition:transform .3s;flex-shrink:0;margin-top:.3rem}}
+.card.collapsed .card-header{{margin-bottom:0}}
+.card.collapsed .card-header::after{{transform:rotate(-90deg)}}
+.card.collapsed .card-body{{display:none}}
 .prof-name{{font-size:1.25rem;font-weight:700;letter-spacing:-0.5px}}
 .prof-title{{color:var(--text2);font-size:.8rem;margin-top:2px}}
 .badge{{padding:.4rem .8rem;border-radius:10px;font-size:.65rem;font-weight:700;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px}}
