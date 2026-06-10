@@ -9,7 +9,30 @@ import os
 from typing import List
 
 from models import Professor
-from config import get_rank_bracket
+import json
+
+_universities_data = None
+
+
+def _load_universities():
+    global _universities_data
+    if _universities_data is None:
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "universities.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                _universities_data = json.load(f)
+        except Exception:
+            _universities_data = {"universities": []}
+    return _universities_data
+
+
+def _get_university_info(university: str):
+    """Look up country and region for a university from universities.json."""
+    data = _load_universities()
+    for uni in data.get("universities", []):
+        if uni["name"].lower() == university.lower():
+            return uni
+    return None
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +47,7 @@ def export_csv(professors: List[Professor], output_path: str):
         "Name",
         "University",
         "Country",
-        "QS Rank Bracket",
+        "QS Subject Rank",
         "Department",
         "Title",
         "Email",
@@ -57,14 +80,15 @@ def export_csv(professors: List[Professor], output_path: str):
                 papers.append(paper_str)
 
             # Determine country and rank
-            country = _get_country(prof.university)
-            bracket = get_rank_bracket(prof.university)
+            info = _get_university_info(prof.university)
+            country = info.get("country", _get_country(prof.university)) if info else _get_country(prof.university)
+            bracket = info.get("qs_subject_rank", "") if info else ""
 
             writer.writerow({
                 "Name": prof.name,
                 "University": prof.university,
                 "Country": country,
-                "QS Rank Bracket": bracket,
+                "QS Subject Rank": bracket,
                 "Department": prof.department,
                 "Title": prof.title,
                 "Email": prof.email,
