@@ -1,0 +1,23 @@
+{
+  "seismology": [
+    "seismology", "earthquake", "seismic", "earth physics",
+    "seismic signal processing", "repeating earthquake",
+    "repeating signal", "seismic detection",
+    "ocean bottom seismometer", "OBS", "OBST", "OBFN",
+    "seismic tomography", "seismic imaging",
+    "seismic inversion", "bayesian inversion",
+    "transdimensional inversion", "rjMCMC",
+    "reversible jump MCMC", "Markov chain Monte Carlo",
+    "seismic interferometry", "ambient noise",
+    "surface wave", "body wave",
+    "seismic array", "beamforming", "backprojection",
+    "earthquake location", "hypocenter",
+    "seismic network", "broadband seismometer",
+    "machine learning seismology",
+    "deep learning seismology",
+    "phase picking", "P arrival", "S arrival",
+    "seismic phase identification",
+    "signal detection", "template matching",
+    "matched filter", "cross-correlation"
+  ]
+}
