@@ -170,7 +170,7 @@ class ProfessorFinder:
         self.status.update(kwargs)
         self._save_status()
 
-    def fetch_page(self, url: str) -> Optional[BeautifulSoup]:
+    def fetch_page(self, url: str, use_cloak: bool = True) -> Optional[BeautifulSoup]:
         """Fetch and parse a web page, falling back to CloakBrowser if blocked."""
         time.sleep(REQUEST_DELAY)
         try:
@@ -178,7 +178,7 @@ class ProfessorFinder:
             resp.raise_for_status()
             return BeautifulSoup(resp.text, "lxml")
         except requests.exceptions.HTTPError as e:
-            if e.response is not None and e.response.status_code in (403, 429):
+            if use_cloak and e.response is not None and e.response.status_code in (403, 429):
                 logger.info(f"Blocked ({e.response.status_code}), retrying with CloakBrowser: {url}")
                 return self.cloak.fetch(url)
             logger.warning(f"Failed to fetch {url}: {e}")
@@ -301,7 +301,7 @@ class ProfessorFinder:
         if not prof.profile_url:
             return prof
 
-        soup = self.fetch_page(prof.profile_url)
+        soup = self.fetch_page(prof.profile_url, use_cloak=False)
         if not soup:
             return prof
 
