@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhD Advisor Dashboard — Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#050508;--surface:#0e0e15;--card:#151525;--border:rgba(255,255,255,0.08);--text:#ffffff;--text2:#a0a0b8;--accent:#7d5fff;--accent2:#b3a4ff;--green:#00d2ad;--orange:#ff9f43;--red:#ff6b6b;--blue:#48dbfb;--glass:rgba(255,255,255,0.03)}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;height:100vh;display:flex;overflow:hidden;}
+.sidebar{width:340px;height:100vh;background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);border-right:1px solid var(--border);padding:2rem 1.5rem;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.main-content{flex:1;height:100vh;overflow-y:auto;padding:2.5rem;scroll-behavior:smooth;background:radial-gradient(circle at top right, rgba(125,95,255,0.05), transparent 40%)}
+
+/* Start Button */
+.start-box{margin-bottom:2rem}
+.start-btn{width:100%;padding:1.2rem;background:linear-gradient(135deg, var(--green), #00b894);border:none;border-radius:16px;color:white;font-weight:700;font-size:1rem;cursor:pointer;transition:all .3s ease;box-shadow:0 8px 25px rgba(0,210,173,0.3);display:flex;align-items:center;justify-content:center;gap:10px}
+.start-btn:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,210,173,0.4)}
+.start-btn:active{transform:translateY(0)}
+.start-btn.running{background:var(--orange);box-shadow:0 8px 25px rgba(255,159,67,0.3);cursor:wait}
+
+/* Config Button */
+.config-box{margin-bottom:2rem}
+.config-btn{width:100%;padding:1rem;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:16px;color:var(--text);font-weight:600;font-size:0.9rem;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;justify-content:center;gap:10px}
+.config-btn:hover{background:rgba(255,255,255,0.1);border-color:var(--accent)}
+
+/* Modal Styles */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:var(--surface);border:1px solid var(--border);border-radius:24px;width:90%;max-width:800px;max-height:90vh;overflow-y:auto;padding:2.5rem;box-shadow:0 25px 50px rgba(0,0,0,0.5)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem}
+.modal-header h2{font-size:1.5rem;background:linear-gradient(135deg,var(--accent2),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.close-modal{background:none;border:none;color:var(--text2);font-size:1.5rem;cursor:pointer}
+.kw-group{margin-bottom:1.5rem;background:var(--glass);padding:1.5rem;border-radius:16px;border:1px solid var(--border)}
+.kw-label{display:block;font-size:0.8rem;color:var(--accent2);font-weight:700;margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:1px}
+.kw-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:1rem;font-family:inherit;font-size:0.9rem;min-height:80px;resize:vertical}
+.modal-footer{display:flex;justify-content:flex-end;gap:1rem;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.btn-save{padding:0.8rem 2rem;background:var(--accent);color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer}
+.btn-cancel{padding:0.8rem 2rem;background:none;color:var(--text2);border:none;cursor:pointer}
+
+/* Progress Section */
+.live-status{background:rgba(125,95,255,0.05);border:1px solid rgba(125,95,255,0.2);border-radius:16px;padding:1.2rem;margin-bottom:2rem}
+.status-header{display:flex;justify-content:space-between;margin-bottom:0.5rem}
+.status-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2)}
+.status-percent{font-size:0.8rem;font-weight:700;color:var(--accent2)}
+.progress-bar-bg{height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;margin-bottom:0.8rem}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg, var(--accent), var(--blue));width:0%;transition:width 0.5s ease}
+.status-text{font-size:0.75rem;color:var(--text2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.hero h1{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem;line-height:1.2}
+.hero p{color:var(--text2);font-size:.85rem;margin-bottom:2rem}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:2rem}
+.stat{background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:1rem;text-align:center;backdrop-filter:blur(10px)}
+.stat.wide{grid-column:span 2}
+.stat .num{font-size:1.6rem;font-weight:700;color:var(--accent2);display:block}
+.stat .label{font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+.controls{display:flex;flex-direction:column;gap:0.75rem;margin-bottom:2rem}
+.search-box{width:100%;padding:0.9rem 1.2rem;background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:.9rem;outline:none;transition:all .3s;backdrop-filter:blur(10px)}
+.search-box:focus{border-color:var(--accent);background:rgba(255,255,255,0.06)}
+.filter-group{display:flex;flex-direction:column;gap:0.5rem}
+.filter-label{font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;font-weight:700;padding-left:4px}
+.filter-btn{padding:.75rem 1rem;background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text2);cursor:pointer;font-size:.85rem;transition:all .2s;text-align:left;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px)}
+.filter-btn:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.filter-btn.active{background:var(--accent);color:white;border-color:var(--accent);box-shadow:0 4px 15px rgba(125,95,255,0.3)}
+.filter-btn .count-badge{background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:10px;font-size:0.7rem}
+.container{max-width:1400px;margin:0 auto}
+.uni-group{margin-bottom:4rem}
+.uni-name{font-size:1.6rem;font-weight:700;padding:1.2rem 0;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(5,5,8,0.85);backdrop-filter:blur(20px);z-index:10;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center}
+.uni-header-main{display:flex;align-items:center;gap:12px}
+.uni-name .count{font-size:.85rem;color:var(--text2);font-weight:400}
+.uni-meta{display:flex;gap:8px}
+.meta-tag{font-size:0.7rem;padding:4px 10px;border-radius:6px;font-weight:600}
+.country-tag{background:rgba(72,219,251,0.1);color:var(--blue);border:1px solid rgba(72,219,251,0.2)}
+.rank-tag{background:rgba(255,159,67,0.1);color:var(--orange);border:1px solid rgba(255,159,67,0.2)}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:1.5rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.75rem;transition:all .3s ease;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;width:4px;height:0;background:var(--accent);transition:height .3s}
+.card:hover{transform:translateY(-5px);box-shadow:0 12px 40px rgba(0,0,0,0.4);border-color:rgba(125,95,255,0.3)}
+.card:hover::before{height:100%}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+.prof-name{font-size:1.25rem;font-weight:700;letter-spacing:-0.5px}
+.prof-title{color:var(--text2);font-size:.8rem;margin-top:2px}
+.badge{padding:.4rem .8rem;border-radius:10px;font-size:.65rem;font-weight:700;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px}
+.badge.high{background:rgba(0,210,173,.12);color:var(--green);border:1px solid rgba(0,210,173,.2)}
+.badge.good{background:rgba(255,159,67,.12);color:var(--orange);border:1px solid rgba(255,159,67,.2)}
+.badge.partial{background:rgba(72,219,251,.12);color:var(--blue);border:1px solid rgba(72,219,251,.2)}
+.metrics{display:flex;gap:.6rem;margin-bottom:1rem}
+.metric{font-size:.7rem;color:var(--accent2);background:rgba(125,95,255,0.1);padding:.3rem .7rem;border-radius:8px;font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.tag{font-size:.65rem;padding:.3rem .6rem;background:rgba(255,255,255,0.05);color:var(--text2);border-radius:8px;border:1px solid var(--border)}
+.tag.matched{background:rgba(0,210,173,.08);color:var(--green);border-color:rgba(0,210,173,.2)}
+.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;border-radius:10px;font-size:.75rem;text-decoration:none;transition:all .2s;font-weight:600}
+.email-btn{background:var(--accent);color:white;box-shadow:0 4px 12px rgba(125,95,255,0.2)}
+.email-btn:hover{transform:scale(1.02);box-shadow:0 6px 15px rgba(125,95,255,0.3)}
+.profile-btn{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--border)}
+.profile-btn:hover{background:rgba(255,255,255,0.1)}
+.scholar-btn{background:rgba(0,210,173,0.1);color:var(--green);border:1px solid rgba(0,210,173,0.2)}
+.scholar-btn:hover{background:rgba(0,210,173,0.2)}
+.no-email{font-size:.75rem;color:var(--text2);font-style:italic;padding:.5rem 0}
+.section{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.section h4{font-size:.65rem;color:var(--text2);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700}
+.pubs{list-style:none;padding:0}
+.pubs li{font-size:.75rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text2)}
+.pubs li:last-child{border:none}
+.pubs li a{color:var(--text);text-decoration:none;font-weight:500}.pubs li a:hover{color:var(--accent2);text-decoration:underline}
+.pubs .year{color:var(--blue);font-weight:700;margin-right:4px}
+.pubs .cite{color:var(--green);font-size:0.7rem;margin-left:4px}
+.bio{font-size:.75rem;color:var(--text2);margin-top:.8rem;line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}
+.footer{margin-top:auto;text-align:center;padding-top:2.5rem;color:var(--text2);font-size:.7rem;opacity:0.6}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.15)}
+@media(max-width:900px){body{flex-direction:column;overflow:auto}.sidebar{width:100%;height:auto;overflow:visible;border-right:none;border-bottom:1px solid var(--border)}.main-content{height:auto;overflow:visible;padding:1.5rem}.cards-grid{grid-template-columns:1fr}}
+</style>
+<script>
+const I18N = {
+  'app.title': { en: 'Global Geoscience Advisor Finder', zh: '全球地学导师搜索工具' },
+  'app.subtitle': { en: 'Target: 150+ Universities Worldwide', zh: '覆盖：全球150+所大学' },
+  'btn.start': { en: 'Start New Scan', zh: '开始新扫描' },
+  'btn.start.running': { en: 'Scanning in progress...', zh: '扫描进行中...' },
+  'btn.start.done': { en: 'Scan Complete (Click to restart)', zh: '扫描完成（点击重新开始）' },
+  'btn.config': { en: 'Configure Keywords', zh: '配置关键词' },
+  'status.idle': { en: 'Idle', zh: '空闲' },
+  'status.ready': { en: 'Ready to begin', zh: '准备开始' },
+  'stat.total': { en: 'Total Professors', zh: '教授总数' },
+  'stat.unis': { en: 'Universities', zh: '大学数量' },
+  'stat.email': { en: 'With Email', zh: '有邮箱' },
+  'filter.search': { en: 'Search name, interest, university...', zh: '搜索姓名、研究方向、大学...' },
+  'filter.match': { en: 'Match Level', zh: '匹配等级' },
+  'filter.all': { en: 'All Matches', zh: '全部匹配' },
+  'filter.high': { en: 'High Match', zh: '高度匹配' },
+  'filter.good': { en: 'Good Match', zh: '良好匹配' },
+  'filter.partial': { en: 'Partial Match', zh: '部分匹配' },
+  'filter.region': { en: 'Region', zh: '地区' },
+  'filter.worldwide': { en: 'Worldwide', zh: '全球' },
+  'filter.us': { en: 'United States', zh: '美国' },
+  'filter.australia': { en: 'Australia', zh: '澳大利亚' },
+  'filter.contact': { en: 'Contact', zh: '联系方式' },
+  'filter.has_email': { en: 'Has Email', zh: '有邮箱' },
+  'card.scholar': { en: 'Scholar', zh: '学术档案' },
+  'card.profile': { en: 'Profile', zh: '个人主页' },
+  'card.email': { en: 'Email', zh: '邮箱' },
+  'card.no_email': { en: 'Email not found', zh: '未找到邮箱' },
+  'card.matched_kw': { en: 'Matched Keywords', zh: '匹配关键词' },
+  'card.pubs': { en: 'Recent Publications', zh: '近期论文' },
+  'card.citations': { en: 'citations', zh: '引用' },
+  'card.h_index': { en: 'h-index', zh: 'h指数' },
+  'card.citations_total': { en: 'Citations', zh: '总引用' },
+  'modal.title': { en: 'Configure Keywords', zh: '配置关键词' },
+  'modal.loading': { en: 'Loading keywords...', zh: '加载关键词中...' },
+  'modal.fail': { en: 'Failed to load keywords.', zh: '加载关键词失败。' },
+  'modal.save': { en: 'Save Configuration', zh: '保存配置' },
+  'modal.cancel': { en: 'Cancel', zh: '取消' },
+  'modal.saving': { en: 'Saving...', zh: '保存中...' },
+  'modal.saved': { en: 'Configuration saved! Next scan will use new keywords.', zh: '配置已保存！下次扫描将使用新关键词。' },
+  'modal.save_fail': { en: 'Failed to save configuration.', zh: '保存配置失败。' },
+  'footer.generated': { en: 'Generated on', zh: '生成于' },
+};
+
+function __(key) {
+  const entry = I18N[key];
+  if (!entry) return key;
+  return entry[currentLang] || entry.en || key;
+}
+
+let currentLang = 'en';
+
+function initLanguage() {
+  const saved = localStorage.getItem('advisor-scout-lang');
+  if (saved && (saved === 'en' || saved === 'zh')) {
+    currentLang = saved;
+  } else if (navigator.language.startsWith('zh')) {
+    currentLang = 'zh';
+  } else {
+    currentLang = 'en';
+  }
+  applyLanguage();
+  updateLangToggle();
+}
+
+function toggleLanguage() {
+  currentLang = currentLang === 'en' ? 'zh' : 'en';
+  localStorage.setItem('advisor-scout-lang', currentLang);
+  applyLanguage();
+  updateLangToggle();
+}
+
+function applyLanguage() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const text = __(key);
+    if (el.tagName === 'INPUT' && el.type === 'text') {
+      el.placeholder = text;
+    } else {
+      el.textContent = text;
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = __(el.dataset.i18nPlaceholder);
+  });
+}
+
+function updateLangToggle() {
+  const btn = document.getElementById('lang-toggle');
+  if (btn) {
+    btn.innerHTML = currentLang === 'en' ? '🌐 中文' : '🌐 English';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initLanguage);
+</script></head>
+<body>
+<div class="sidebar">
+  <div class="hero">
+    <h1 data-i18n="app.title">🎓 Global Geoscience Advisor Finder</h1>
+    <p data-i18n="app.subtitle">Target: 150+ Universities Worldwide</p>
+  </div>
+
+  <!-- START BUTTON -->
+  <div class="start-box">
+    <button class="start-btn" id="start-btn" data-i18n="btn.start">
+        🚀 Start New Scan
+    </button>
+  </div>
+
+  <div class="config-box">
+    <button class="config-btn" id="config-btn" data-i18n="btn.config">
+        ⚙️ Configure Keywords
+    </button>
+  </div>
+
+  <!-- LIVE PROGRESS SECTION -->
+  <div class="live-status" id="live-status">
+    <div class="status-header">
+        <span class="status-title" id="status-phase" data-i18n="status.idle">Idle</span>
+        <span class="status-percent" id="status-percent">0%</span>
+    </div>
+    <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="status-bar"></div>
+    </div>
+    <span class="status-text" id="status-uni" data-i18n="status.ready">Ready to begin</span>
+  </div>
+  
+  <div class="stats">
+    <div class="stat wide"><div class="num" id="stat-total">0</div><div class="label" data-i18n="stat.total">Total Professors</div></div>
+    <div class="stat"><div class="num" id="stat-unis">0</div><div class="label" data-i18n="stat.unis">Universities</div></div>
+    <div class="stat"><div class="num" id="stat-email">0</div><div class="label" data-i18n="stat.email">With Email</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="filter-group">
+        <span class="filter-label">Search</span>
+        <input type="text" class="search-box" id="search" data-i18n-placeholder="filter.search" placeholder="🔍 Search name, interest, university...">
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label" data-i18n="filter.match">Match Level</span>
+        <button class="filter-btn active" data-filter="all" data-i18n="filter.all">🌐 All Matches <span class="count-badge">0</span></button>
+        <button class="filter-btn" data-filter="high" data-i18n="filter.high">🔥 High Match <span class="count-badge">0</span></button>
+        <button class="filter-btn" data-filter="good" data-i18n="filter.good">⭐ Good Match <span class="count-badge">0</span></button>
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label" data-i18n="filter.region">Region</span>
+        <button class="filter-btn" data-region="all" id="reg-all" data-i18n="filter.worldwide">🌍 Worldwide</button>
+        <button class="filter-btn" data-region="us" id="reg-us" data-i18n="filter.us">🇺🇸 United States <span class="count-badge">0</span></button>
+        <button class="filter-btn" data-region="australia" id="reg-au" data-i18n="filter.australia">🇦🇺 Australia <span class="count-badge">0</span></button>
+    </div>
+    
+    <div class="filter-group">
+        <span class="filter-label" data-i18n="filter.contact">Contact</span>
+        <button class="filter-btn" data-filter="email" data-i18n="filter.has_email">📧 Has Email <span class="count-badge">0</span></button>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:1rem 0;">
+    <button id="lang-toggle" onclick="toggleLanguage()" style="background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:0.6rem 1.2rem;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;width:100%"
+        onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='var(--glass)'">
+        🌐 中文
+    </button>
+  </div>
+
+  <div class="footer"><span data-i18n="footer.generated">Generated on</span><br>Jun 10, 2026 at 11:13 PM</div>
+</div>
+
+<div class="main-content">
+  <div class="container" id="report-container">
+    
+  </div>
+</div>
+
+<!-- CONFIG MODAL -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 data-i18n="modal.title">Configure Keywords</h2>
+      <button class="close-modal" id="close-modal">&times;</button>
+    </div>
+    <div id="keywords-container">
+        <!-- Dynamic keyword inputs will go here -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="btn-cancel" data-i18n="modal.cancel">Cancel</button>
+      <button class="btn-save" id="btn-save" data-i18n="modal.save">Save Configuration</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const search=document.getElementById('search');
+const cards=document.querySelectorAll('.card');
+const filters=document.querySelectorAll('.filter-btn[data-filter]');
+const regionFilters=document.querySelectorAll('.filter-btn[data-region]');
+const uniGroups=document.querySelectorAll('.uni-group');
+const startBtn = document.getElementById('start-btn');
+
+let activeFilter='all';
+let activeRegion='all';
+
+function applyFilters(){
+    const q=search.value.toLowerCase();
+    
+    cards.forEach(c=>{
+        let show=true;
+        const name=c.dataset.name||'';
+        const uni=c.dataset.uni||'';
+        const int=c.dataset.interests||'';
+        const score=parseFloat(c.dataset.score)||0;
+        const country=c.dataset.country||'';
+        
+        if(q && !name.includes(q) && !uni.includes(q) && !int.includes(q)) show=false;
+        if(activeFilter==='high' && score<3) show=false;
+        if(activeFilter==='good' && score<2) show=false;
+        if(activeFilter==='email' && !c.querySelector('.email-btn')) show=false;
+        
+        if(activeRegion !== 'all' && country !== activeRegion) show=false;
+        
+        c.classList.toggle('hidden', !show);
+    });
+    
+    uniGroups.forEach(g=>{
+        const visible=g.querySelectorAll('.card:not(.hidden)');
+        const regionMatch = activeRegion === 'all' || g.dataset.country === activeRegion;
+        g.classList.toggle('hidden', visible.length===0 || !regionMatch);
+    });
+    
+    // Update counters
+    const visibleCards = document.querySelectorAll('.card:not(.hidden)').length;
+    const visibleUnis = document.querySelectorAll('.uni-group:not(.hidden)').length;
+    const visibleEmails = document.querySelectorAll('.card:not(.hidden) .email-btn').length;
+    
+    document.getElementById('stat-total').innerText = visibleCards;
+    document.getElementById('stat-unis').innerText = visibleUnis;
+    document.getElementById('stat-email').innerText = visibleEmails;
+}
+
+search.addEventListener('input', applyFilters);
+
+filters.forEach(b=>b.addEventListener('click',()=>{
+    filters.forEach(f=>f.classList.remove('active'));
+    b.classList.add('active');
+    activeFilter=b.dataset.filter;
+    applyFilters();
+}));
+
+regionFilters.forEach(b=>b.addEventListener('click',()=>{
+    regionFilters.forEach(f=>f.classList.remove('active'));
+    b.classList.add('active');
+    activeRegion=b.dataset.region;
+    applyFilters();
+}));
+
+// Initialize region filter
+document.getElementById('reg-all').classList.add('active');
+
+// START BUTTON HANDLER
+startBtn.addEventListener('click', async () => {
+    if (startBtn.classList.contains('running')) return;
+    
+    if (confirm((currentLang === 'zh' ? '确认开始全新扫描所有大学？这可能需要10-20分钟。' : 'Start a fresh scan of all universities? This may take 10-20 minutes.'))) {
+        startBtn.innerText = '⚙️ ' + __('btn.start.running');
+        startBtn.classList.add('running');
+        try {
+            const response = await fetch('/start');
+            const data = await response.json();
+            console.log('Scraper started', data);
+        } catch (e) {
+            alert('Failed to start scraper. Make sure app.py is running.');
+            startBtn.innerText = '🚀 ' + __('btn.start');
+            startBtn.classList.remove('running');
+        }
+    }
+});
+
+// CONFIG MODAL HANDLER
+const configBtn = document.getElementById('config-btn');
+const configModal = document.getElementById('config-modal');
+const closeModal = document.getElementById('close-modal');
+const btnCancel = document.getElementById('btn-cancel');
+const btnSave = document.getElementById('btn-save');
+const kwContainer = document.getElementById('keywords-container');
+
+configBtn.addEventListener('click', async () => {
+    kwContainer.innerHTML = '<p style="text-align:center;padding:2rem;"><span data-i18n="modal.loading">Loading keywords...</span></p>';
+    configModal.style.display = 'flex';
+    
+    try {
+        const response = await fetch('/get_keywords');
+        const keywords = await response.json();
+        
+        kwContainer.innerHTML = '';
+        Object.entries(keywords).forEach(([category, list]) => {
+            const group = document.createElement('div');
+            group.className = 'kw-group';
+            group.innerHTML = `
+                <label class="kw-label">${category.replace(/_/g, ' ')}</label>
+                <textarea class="kw-input" data-category="${category}">${list.join(', ')}</textarea>
+            `;
+            kwContainer.appendChild(group);
+        });
+    } catch (e) {
+        kwContainer.innerHTML = '<p style="color:var(--red);text-align:center;padding:2rem;"><span data-i18n="modal.fail">Failed to load keywords.</span></p>';
+    }
+});
+
+const hideModal = () => configModal.style.display = 'none';
+closeModal.addEventListener('click', hideModal);
+btnCancel.addEventListener('click', hideModal);
+
+btnSave.addEventListener('click', async () => {
+    const textareas = kwContainer.querySelectorAll('textarea');
+    const newKeywords = {};
+    
+    textareas.forEach(ta => {
+        const category = ta.dataset.category;
+        const list = ta.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        newKeywords[category] = list;
+    });
+    
+    btnSave.innerText = '⌛ ' + __('modal.saving');
+    btnSave.disabled = true;
+    
+    try {
+        const response = await fetch('/save_keywords', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newKeywords)
+        });
+        if (response.ok) {
+            hideModal();
+            alert(__('modal.saved'));
+        } else {
+            alert(__('modal.save_fail'));
+        }
+    } catch (e) {
+        alert('Error saving configuration.');
+    } finally {
+        btnSave.innerText = __('modal.save');
+        btnSave.disabled = false;
+    }
+});
+
+// LIVE PROGRESS POLLING
+async function pollStatus() {
+    try {
+        // Use relative path for status.json since it's served by the same server
+        const response = await fetch('status.json?t=' + new Date().getTime());
+        if (response.ok) {
+            const status = await response.json();
+            
+            document.getElementById('status-phase').innerText = status.phase;
+            document.getElementById('status-uni').innerText = status.current_university || 'Idle';
+            
+            const total = status.total_urls || 1;
+            const current = status.current_index || 0;
+            const percent = Math.round((current / total) * 100);
+            
+            document.getElementById('status-percent').innerText = percent + '%';
+            document.getElementById('status-bar').style.width = percent + '%';
+            document.getElementById('stat-total').innerText = status.professors_total;
+            
+            if (status.phase !== 'Completed' && status.phase !== 'Idle') {
+                startBtn.innerText = '⚙️ ' + __('btn.start.running');
+                startBtn.classList.add('running');
+            } else if (status.phase === 'Completed') {
+                startBtn.innerText = '✅ ' + __('btn.start.done');
+                startBtn.classList.remove('running');
+                // Optional: reload after some time
+                // location.reload();
+            }
+        }
+    } catch (e) {
+        console.log('Status poll failed', e);
+    }
+}
+
+// Poll every 3 seconds
+setInterval(pollStatus, 3000);
+pollStatus();
+
+</script></body></html>
