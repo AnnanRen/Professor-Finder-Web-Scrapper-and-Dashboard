@@ -49,96 +49,99 @@ def generate_html_report(professors: List[Professor], output_path: str):
     """Generate a stunning self-contained HTML report with live progress tracking."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Group by university
-    by_uni: Dict[str, List[Professor]] = {}
+    # Collect all interests for tag filter
+    all_interests = set()
     for p in professors:
-        by_uni.setdefault(p.university, []).append(p)
+        for kw in p.research_interests:
+            if len(kw) > 2:
+                all_interests.add(kw.strip())
 
+    # Flat list sorted by score
     professor_cards = ""
-    for uni, profs in sorted(by_uni.items()):
-        info = _get_uni_info(uni)
-        country_code = info.get("country", _get_country(uni))
+    for i, p in enumerate(sorted(professors, key=lambda x: x.match_score, reverse=True)):
+        info = _get_uni_info(p.university)
+        country_code = info.get("country", _get_country(p.university))
         country_display = COUNTRY_DISPLAY.get(country_code, country_code)
+        region = _get_region(p.university).lower()
         qs_rank = info.get("qs_subject_rank", "")
-        country_lower = country_code.lower()
-        
-        cards_html = ""
-        for p in sorted(profs, key=lambda x: x.match_score, reverse=True):
-            pubs_html = ""
-            for pub in p.publications[:5]:
-                cite = f' <span class="cite">({pub.citations} <span data-i18n="card.citations">citations</span>)</span>' if pub.citations else ""
-                year = f' <span class="year">{pub.year}</span>' if pub.year else ""
-                venue = f' — <em>{pub.venue}</em>' if pub.venue else ""
-                link = f'<a href="{pub.url}" target="_blank">' if pub.url else ""
-                link_end = "</a>" if pub.url else ""
-                pubs_html += f'<li>{link}{_esc(pub.title)}{link_end}{year}{venue}{cite}</li>\n'
+        prof_id = f"prof-{i}"
 
-            pubs_section = ""
-            if pubs_html:
-                pubs_section = f'''<div class="section"><h4>📄 <span data-i18n="card.pubs">Recent Publications</span></h4><ul class="pubs">{pubs_html}</ul></div>'''
+        # Publications
+        pubs_html = ""
+        for pub in p.publications[:5]:
+            cite = f' <span class="cite">({pub.citations} citations)</span>' if pub.citations else ""
+            year = f' <span class="year">{pub.year}</span>' if pub.year else ""
+            venue = f' — <em>{pub.venue}</em>' if pub.venue else ""
+            link = f'<a href="{pub.url}" target="_blank">' if pub.url else ""
+            link_end = "</a>" if pub.url else ""
+            pubs_html += f'<li>{link}{_esc(pub.title)}{link_end}{year}{venue}{cite}</li>\n'
 
-            interests_html = ""
-            if p.research_interests:
-                tags = "".join(f'<span class="tag">{_esc(i)}</span>' for i in p.research_interests[:12])
-                interests_html = f'<div class="tags">{tags}</div>'
+        pubs_section = ""
+        if pubs_html:
+            pubs_section = f'<div class="section"><h4>📄 Recent Publications</h4><ul class="pubs">{pubs_html}</ul></div>'
 
-            matched_html = ""
-            if p.matched_keywords:
-                tags = "".join(f'<span class="tag matched">{_esc(k)}</span>' for k in p.matched_keywords[:10])
-                matched_html = f'<div class="section"><h4>🎯 <span data-i18n="card.matched_kw">Matched Keywords</span></h4><div class="tags">{tags}</div></div>'
+        interests_html = ""
+        if p.research_interests:
+            tags = "".join(f'<span class="tag interest-tag" data-tag="{_esc(i.lower())}">{_esc(i)}</span>' for i in p.research_interests[:12])
+            interests_html = f'<div class="tags">{tags}</div>'
 
-            email_html = f'<a href="mailto:{_esc(p.email)}" class="btn email-btn">📧 <span data-i18n="card.email">Email</span>: {_esc(p.email)}</a>' if p.email else '<span class="no-email"><span data-i18n="card.no_email">Email not found</span></span>'
-            profile_html = f'<a href="{_esc(p.profile_url)}" target="_blank" class="btn profile-btn">🔗 <span data-i18n="card.profile">Profile</span></a>' if p.profile_url else ""
-            scholar_html = f'<a href="{_esc(p.scholar_url)}" target="_blank" class="btn scholar-btn">🎓 <span data-i18n="card.scholar">Scholar</span></a>' if p.scholar_url else ""
+        matched_html = ""
+        if p.matched_keywords:
+            tags = "".join(f'<span class="tag matched">{_esc(k)}</span>' for k in p.matched_keywords[:10])
+            matched_html = f'<div class="section"><h4>🎯 <span data-i18n="card.matched_kw">Matched Keywords</span></h4><div class="tags">{tags}</div></div>'
 
-            badge_class = "high" if p.match_score >= 3 else "good" if p.match_score >= 2 else "partial"
-            metrics = ""
-            if p.h_index or p.citations_total:
-                h = f'<span class="metric"><span data-i18n="card.h_index">h-index</span>: {p.h_index}</span>' if p.h_index else ""
-                c = f'<span class="metric"><span data-i18n="card.citations_total">Citations</span>: {p.citations_total:,}</span>' if p.citations_total else ""
-                metrics = f'<div class="metrics">{h}{c}</div>'
+        email_html = f'<a href="mailto:{_esc(p.email)}" class="btn email-btn">📧 <span data-i18n="card.email">Email</span>: {_esc(p.email)}</a>' if p.email else '<span class="no-email"><span data-i18n="card.no_email">Email not found</span></span>'
+        profile_html = f'<a href="{_esc(p.profile_url)}" target="_blank" class="btn profile-btn">🔗 <span data-i18n="card.profile">Profile</span></a>' if p.profile_url else ""
+        scholar_html = f'<a href="{_esc(p.scholar_url)}" target="_blank" class="btn scholar-btn">🎓 <span data-i18n="card.scholar">Scholar</span></a>' if p.scholar_url else ""
 
-            bio_html = f'<p class="bio">{_esc(p.bio[:400])}</p>' if p.bio else ""
+        badge_class = "high" if p.match_score >= 3 else "good" if p.match_score >= 2 else "partial"
+        metrics = ""
+        if p.h_index or p.citations_total:
+            h = f'<span class="metric"><span data-i18n="card.h_index">h-index</span>: {p.h_index}</span>' if p.h_index else ""
+            c = f'<span class="metric"><span data-i18n="card.citations_total">Citations</span>: {p.citations_total:,}</span>' if p.citations_total else ""
+            metrics = f'<div class="metrics">{h}{c}</div>'
 
-            cards_html += f'''
-<div class="card collapsed" data-score="{p.match_score}" data-name="{_esc(p.name.lower())}" data-uni="{_esc(p.university.lower())}" data-interests="{_esc(' '.join(p.research_interests).lower())}" data-country="{country_lower}">
-  <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-    <div><h3 class="prof-name">{_esc(p.name)}</h3>
-    <p class="prof-title">{country_display} | {_esc(uni)}{(' (' + qs_rank + ')' if qs_rank else '')}</p></div>
-    <span class="badge {badge_class}">{p.match_level} ({p.match_score})</span>
-  </div>
-  <div class="card-body">
-  {metrics}
-  {interests_html}
-  <div class="actions">{email_html} {profile_html} {scholar_html}</div>
-  {matched_html}
-  {bio_html}
-  {pubs_section}
-  </div>
-</div>'''
+        bio_html = f'<p class="bio">{_esc(p.bio[:400])}</p>' if p.bio else ""
 
         professor_cards += f'''
-<div class="uni-group" data-country="{country_lower}">
-  <h2 class="uni-name">
-    <div class="uni-header-main">
-        {_esc(uni)} <span class="count">({len(profs)} professors)</span>
+<div class="card" data-score="{p.match_score}" data-name="{_esc(p.name.lower())}" data-uni="{_esc(p.university.lower())}" data-region="{region}" data-id="{prof_id}" onclick="openDrawer('{prof_id}')">
+  <div class="card-header">
+    <div><h3 class="prof-name">{_esc(p.name)}</h3>
+    <p class="prof-title">{country_display} | {_esc(p.university)}{(' (' + qs_rank + ')' if qs_rank else '')}</p>
+    <div class="tags">{interests_html}</div></div>
+    <div><span class="badge {badge_class}">{p.match_level} ({p.match_score})</span></div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawer-{prof_id}" onclick="if(event.target===this)closeDrawer('{prof_id}')">
+  <div class="drawer-panel">
+    <button class="drawer-close" onclick="closeDrawer('{prof_id}')">&times;</button>
+    <h2>{_esc(p.name)}</h2>
+    <p class="prof-title">{_esc(p.title or 'Faculty')} — {_esc(p.university)}</p>
+    <span class="badge {badge_class}">{p.match_level} ({p.match_score})</span>
+    {metrics}
+    <div class="section"><h4>📧 Contact</h4><div class="actions">{email_html} {profile_html} {scholar_html}</div></div>
+    {matched_html}
+    <div class="section"><h4>📖 <span data-i18n="card.matched_kw">Research Interests</span></h4><div class="tags">{interests_html}</div></div>
+    {pubs_section}
+    <div class="section">
+      <h4>Bio</h4>
+      <p style="color:var(--text2);font-size:.85rem;line-height:1.6">{_esc(p.bio) if p.bio else 'N/A'}</p>
     </div>
-    <div class="uni-meta">
-        <span class="meta-tag country-tag">{country_display}</span>
-        <span class="meta-tag rank-tag">{qs_rank}</span>
-    </div>
-  </h2>
-  <div class="cards-grid">{cards_html}</div>
+  </div>
 </div>'''
 
     # Stats
     total = len(professors)
     high = sum(1 for p in professors if p.match_score >= 3)
     good = sum(1 for p in professors if 2 <= p.match_score < 3)
-    unis = len(by_uni)
+    unis = len(set(p.university for p in professors))
     with_email = sum(1 for p in professors if p.email)
-    us_count = sum(1 for p in professors if _get_country(p.university) == "US")
-    au_count = sum(1 for p in professors if _get_country(p.university) == "Australia")
+    # Region counts
+    regions_data = {}
+    for p in professors:
+        r = _get_region(p.university)
+        regions_data[r] = regions_data.get(r, 0) + 1
 
     html = f'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -215,11 +218,27 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 .card::before{{content:'';position:absolute;top:0;left:0;width:4px;height:0;background:var(--accent);transition:height .3s}}
 .card:hover{{transform:translateY(-5px);box-shadow:0 12px 40px rgba(0,0,0,0.4);border-color:rgba(125,95,255,0.3)}}
 .card:hover::before{{height:100%}}
-.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;cursor:pointer;user-select:none}}
-.card-header::after{{content:'▾';font-size:1.2rem;color:var(--text2);transition:transform .3s;flex-shrink:0;margin-top:.3rem}}
-.card.collapsed .card-header{{margin-bottom:0}}
-.card.collapsed .card-header::after{{transform:rotate(-90deg)}}
-.card.collapsed .card-body{{display:none}}
+.card-header{{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0;cursor:pointer;user-select:none}}
+.card:hover{{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.4);border-color:rgba(125,95,255,0.3)}}
+.card:hover::before{{height:100%}}
+.card-header .tags{{margin-bottom:0}}
+
+/* Detail Drawer */
+.drawer-overlay{{position:fixed;top:0;right:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:none;z-index:1000}}
+.drawer-overlay.open{{display:block}}
+.drawer-panel{{position:absolute;top:0;right:0;width:580px;max-width:100vw;height:100%;background:var(--surface);border-left:1px solid var(--border);padding:3rem 2.5rem;overflow-y:auto;animation:slideIn .3s ease}}
+@keyframes slideIn{{from{{transform:translateX(100%)}}to{{transform:translateX(0)}}}}
+.drawer-close{{position:absolute;top:1.5rem;right:1.5rem;background:none;border:none;color:var(--text2);font-size:1.8rem;cursor:pointer;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center}}
+.drawer-close:hover{{background:var(--glass);color:var(--text)}}
+.drawer-panel h2{{font-size:1.6rem;font-weight:700;margin-bottom:.3rem}}
+.drawer-panel .prof-title{{color:var(--text2);font-size:.85rem;margin-bottom:1rem}}
+.drawer-panel .section{{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}}
+.drawer-panel .section h4{{font-size:.7rem;color:var(--text2);margin-bottom:.8rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700}}
+
+/* Interest Tag Filter */
+.tag-filter{{cursor:pointer;transition:all .2s}}
+.tag-filter:hover{{background:rgba(125,95,255,0.2);border-color:var(--accent);color:var(--text)}}
+.tag-filter.active{{background:var(--accent);color:white;border-color:var(--accent)}}
 .prof-name{{font-size:1.25rem;font-weight:700;letter-spacing:-0.5px}}
 .prof-title{{color:var(--text2);font-size:.8rem;margin-top:2px}}
 .badge{{padding:.4rem .8rem;border-radius:10px;font-size:.65rem;font-weight:700;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:0.5px}}
@@ -407,9 +426,15 @@ document.addEventListener('DOMContentLoaded', initLanguage);
 
     <div class="filter-group">
         <span class="filter-label" data-i18n="filter.region">Region</span>
-        <button class="filter-btn" data-region="all" id="reg-all" data-i18n="filter.worldwide">🌍 Worldwide</button>
-        <button class="filter-btn" data-region="us" id="reg-us" data-i18n="filter.us">🇺🇸 United States <span class="count-badge">{us_count}</span></button>
-        <button class="filter-btn" data-region="australia" id="reg-au" data-i18n="filter.australia">🇦🇺 Australia <span class="count-badge">{au_count}</span></button>
+        <button class="filter-btn active" data-region="all">🌍 <span data-i18n="filter.worldwide">Worldwide</span> <span class="count-badge">{total}</span></button>
+''' + "".join(f'        <button class="filter-btn" data-region="{k.lower()}">{_region_flag(k)} {k} <span class="count-badge">{v}</span></button>\n' for k, v in sorted(regions_data.items(), key=lambda x: -x[1])) + f'''
+    </div>
+
+    <div class="filter-group">
+        <span class="filter-label">🎯 Interest Tags (click to filter)</span>
+        <div class="tags" id="tag-filters" style="margin-bottom:0">
+''' + "".join(f'<span class="tag tag-filter" data-tag="{_esc(t.lower())}" onclick="toggleTagFilter(this)">{_esc(t)}</span>' for t in sorted(all_interests)[:30]) + f'''
+        </div>
     </div>
     
     <div class="filter-group">
@@ -456,47 +481,53 @@ const search=document.getElementById('search');
 const cards=document.querySelectorAll('.card');
 const filters=document.querySelectorAll('.filter-btn[data-filter]');
 const regionFilters=document.querySelectorAll('.filter-btn[data-region]');
-const uniGroups=document.querySelectorAll('.uni-group');
 const startBtn = document.getElementById('start-btn');
 
 let activeFilter='all';
 let activeRegion='all';
+let activeTag='';
+
+function openDrawer(id){{
+    document.getElementById('drawer-'+id).classList.add('open');
+}}
+function closeDrawer(id){{
+    document.getElementById('drawer-'+id).classList.remove('open');
+}}
+
+function toggleTagFilter(el){{
+    el.classList.toggle('active');
+    activeTag = el.classList.contains('active') ? el.dataset.tag : '';
+    document.querySelectorAll('.tag-filter').forEach(t=>{{ if(t!==el)t.classList.remove('active'); }});
+    applyFilters();
+}}
 
 function applyFilters(){{
     const q=search.value.toLowerCase();
-    
     cards.forEach(c=>{{
         let show=true;
         const name=c.dataset.name||'';
         const uni=c.dataset.uni||'';
-        const int=c.dataset.interests||'';
         const score=parseFloat(c.dataset.score)||0;
-        const country=c.dataset.country||'';
-        
-        if(q && !name.includes(q) && !uni.includes(q) && !int.includes(q)) show=false;
+        const region=c.dataset.region||'';
+
+        if(q && !name.includes(q) && !uni.includes(q)) show=false;
         if(activeFilter==='high' && score<3) show=false;
         if(activeFilter==='good' && score<2) show=false;
         if(activeFilter==='email' && !c.querySelector('.email-btn')) show=false;
-        
-        if(activeRegion !== 'all' && country !== activeRegion) show=false;
-        
+        if(activeRegion !== 'all' && region !== activeRegion) show=false;
+        if(activeTag){{
+            const cardTags = c.querySelectorAll('.interest-tag');
+            let hasTag = false;
+            cardTags.forEach(t=>{{ if(t.dataset.tag===activeTag) hasTag=true; }});
+            if(!hasTag) show=false;
+        }}
         c.classList.toggle('hidden', !show);
     }});
-    
-    uniGroups.forEach(g=>{{
-        const visible=g.querySelectorAll('.card:not(.hidden)');
-        const regionMatch = activeRegion === 'all' || g.dataset.country === activeRegion;
-        g.classList.toggle('hidden', visible.length===0 || !regionMatch);
-    }});
-    
-    // Update counters
-    const visibleCards = document.querySelectorAll('.card:not(.hidden)').length;
-    const visibleUnis = document.querySelectorAll('.uni-group:not(.hidden)').length;
-    const visibleEmails = document.querySelectorAll('.card:not(.hidden) .email-btn').length;
-    
-    document.getElementById('stat-total').innerText = visibleCards;
-    document.getElementById('stat-unis').innerText = visibleUnis;
-    document.getElementById('stat-email').innerText = visibleEmails;
+    var visible = document.querySelectorAll('.card:not(.hidden)').length;
+    var emails = document.querySelectorAll('.card:not(.hidden) .email-btn').length;
+    document.getElementById('stat-total').innerText = visible;
+    document.getElementById('stat-unis').innerText = new Set(Array.from(document.querySelectorAll('.card:not(.hidden)')).map(c=>c.dataset.uni)).size;
+    document.getElementById('stat-email').innerText = emails;
 }}
 
 search.addEventListener('input', applyFilters);
@@ -514,9 +545,6 @@ regionFilters.forEach(b=>b.addEventListener('click',()=>{{
     activeRegion=b.dataset.region;
     applyFilters();
 }}));
-
-// Initialize region filter
-document.getElementById('reg-all').classList.add('active');
 
 // START BUTTON HANDLER
 startBtn.addEventListener('click', async () => {{
@@ -650,6 +678,10 @@ pollStatus();
     logger.info(f"HTML report generated: {output_path}")
 
 
+def _region_flag(region: str) -> str:
+    flags = {"Americas": "🌎", "Europe": "🇪🇺", "Oceania": "🏝️", "Asia": "🌏", "Other": "🌍"}
+    return flags.get(region, "🌍")
+
 def _esc(text: str) -> str:
     """Escape HTML special characters."""
     if not text:
@@ -658,19 +690,22 @@ def _esc(text: str) -> str:
 
 
 def _get_country(university: str) -> str:
-    """Determine country based on university name."""
-    au_indicators = [
-        "australia", "melbourne", "sydney", "unsw", "monash",
-        "queensland", "adelaide", "western australia", "anu",
-        "macquarie", "curtin", "rmit", "deakin", "griffith",
-        "wollongong", "newcastle", "tasmania", "flinders",
-        "latrobe", "swinburne", "james cook", "canberra",
-        "charles sturt", "southern cross", "edith cowan",
-        "murdoch", "charles darwin", "victoria university",
-        "bond university", "university of technology sydney", "uts",
-    ]
-    uni_lower = university.lower()
-    for indicator in au_indicators:
-        if indicator in uni_lower:
-            return "Australia"
-    return "US"
+    """Determine country by looking up universities.json."""
+    info = _get_uni_info(university)
+    return info.get("country", "US")
+
+def _get_region(university: str) -> str:
+    """Map country to display region for filtering."""
+    country = _get_country(university)
+    region_map = {
+        "US": "Americas", "Canada": "Americas", "Mexico": "Americas",
+        "UK": "Europe", "Switzerland": "Europe", "Netherlands": "Europe",
+        "Germany": "Europe", "Norway": "Europe", "France": "Europe",
+        "Italy": "Europe", "Denmark": "Europe", "Sweden": "Europe",
+        "Finland": "Europe", "Iceland": "Europe", "Austria": "Europe",
+        "Belgium": "Europe", "Spain": "Europe", "Ireland": "Europe",
+        "Australia": "Oceania", "New Zealand": "Oceania",
+        "Singapore": "Asia", "Hong Kong": "Asia",
+        "Japan": "Asia", "China": "Asia", "South Korea": "Asia", "Taiwan": "Asia",
+    }
+    return region_map.get(country, "Other")
