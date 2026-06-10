@@ -18,18 +18,45 @@ import logging
 import time
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
 from models import Professor, Publication
 from config import (
-    SEARCH_KEYWORDS, QS_UNIVERSITIES_US, QS_UNIVERSITIES_AUSTRALIA,
+    SEARCH_KEYWORDS,
     MIN_MATCH_SCORE, REQUEST_DELAY, USER_AGENT, REQUEST_TIMEOUT,
     SCHOLAR_SEARCH_QUERIES, MAX_PUBLICATIONS,
 )
 from matcher import KeywordMatcher
 from output.html_report import generate_html_report
 from output.csv_export import export_csv
+
+UNIVERSITIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "universities.json")
+
+
+def load_universities(json_path: str = None) -> List[Tuple[str, str, str]]:
+    """Load university targets from universities.json. Returns list of (name, department, url)."""
+    if json_path is None:
+        json_path = UNIVERSITIES_FILE
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    enabled_regions = {
+        k for k, v in data.get("regions", {}).items() if v.get("enabled", False)
+    }
+
+    targets = []
+    for uni in data.get("universities", []):
+        if uni.get("region") not in enabled_regions:
+            continue
+        if uni.get("status") == "broken":
+            continue
+        if not uni.get("faculty_url"):
+            continue
+        targets.append((uni["name"], uni["department"], uni["faculty_url"]))
+
+    return targets
+
 
 # Fix Windows console encoding
 if sys.platform == "win32":
@@ -345,118 +372,19 @@ class ProfessorFinder:
         return [text] if text and len(text) > 2 else []
 
 
-# ── Pre-configured University Faculty URLs ──────────────────────
-# These are well-known, scrapable faculty directories
-
-FACULTY_URLS = [
-    # ═══ US UNIVERSITIES — USER REQUESTED / ACCESSIBLE ═══
-    ("University of Toledo", "EECS", "https://www.utoledo.edu/engineering/electrical-engineering-computer-science/faculty/"),
-    ("University of Delaware", "ECE", "https://www.ece.udel.edu/people/faculty/"),
-    ("University of Illinois Chicago", "ECE", "https://ece.uic.edu/profiles/faculty/"),
-    ("University of Houston", "ECE", "https://www.ece.uh.edu/faculty"),
-    ("University of Kentucky", "ECE", "https://www.engr.uky.edu/research-faculty/departments/electrical-computer-engineering/faculty"),
-    ("University of Miami", "ECE", "https://coe.miami.edu/academics/electrical-computer-engineering/faculty/index.html"),
-    ("NJIT", "ECE", "https://ece.njit.edu/faculty"),
-    ("Illinois Institute of Technology", "ECE", "https://www.iit.edu/ece/people/faculty"),
-    ("University of North Texas", "EE", "https://electrical.engineering.unt.edu/faculty"),
-    ("University of South Florida", "EE", "https://www.usf.edu/engineering/ee/people/index.aspx"),
-    ("Cleveland State University", "ECE", "https://engineering.csuohio.edu/ece/faculty-and-staff"),
-    ("University of Akron", "ECE", "https://www.uakron.edu/engineering/ECE/faculty-staff/"),
-    ("Wichita State University", "EECS", "https://www.wichita.edu/academics/engineering/EECS/People/faculty.php"),
-    ("University of Memphis", "EE", "https://www.memphis.edu/ee/faculty/index.php"),
-    ("Louisiana Tech University", "EE", "https://coes.latech.edu/electrical-engineering/faculty-staff/"),
-    ("University of Arkansas", "EECS", "https://electrical-engineering.uark.edu/directory/index.php"),
-    ("University of Nevada, Reno", "ECE", "https://www.unr.edu/ece/people"),
-    ("University of South Alabama", "ECE", "https://www.southalabama.edu/colleges/engineering/ece/faculty.html"),
-    ("North Dakota State University", "ECE", "https://www.ndsu.edu/ece/people/faculty/"),
-    ("South Dakota School of Mines", "ECE", "https://www.sdsmt.edu/Academics/Departments/Electrical-Engineering/Faculty-and-Staff/"),
-    ("University of Maine", "ECE", "https://ece.umaine.edu/faculty-and-staff/"),
-    ("University of Wyoming", "EECS", "https://www.uwyo.edu/eecs/faculty-and-staff/index.html"),
-    ("Montana State University", "ECE", "https://www.montana.edu/ece/directory/faculty.html"),
-    ("University of Idaho", "ECE", "https://www.uidaho.edu/engr/departments/ece/our-people"),
-    ("New Mexico Tech", "EE", "https://www.nmt.edu/academics/ee/faculty.php"),
-    ("University of North Dakota", "EE", "https://engineering.und.edu/electrical/faculty/index.html"),
-    ("East Carolina University", "ECE", "https://cet.ecu.edu/engineering/electrical-and-computer-engineering/faculty/"),
-    ("Old Dominion University", "ECE", "https://www.odu.edu/ece/directory"),
-    ("University of Texas at San Antonio", "ECE", "https://engineering.utsa.edu/electrical-computer/faculty/"),
-    ("Texas Tech University", "ECE", "https://www.depts.ttu.edu/ece/faculty/"),
-    ("University of Alabama at Birmingham", "ECE", "https://www.uab.edu/engineering/ece/people/faculty"),
-    ("UA Huntsville", "ECE", "https://www.uah.edu/eng/departments/ece/faculty-staff"),
-    ("University of Cincinnati", "ECE", "https://ceas.uc.edu/academics/departments/electrical-computer-engineering/people.html"),
-    ("Wright State University", "EE", "https://engineering-computer-science.wright.edu/electrical-engineering/faculty-and-staff"),
-    ("University of Massachusetts Lowell", "ECE", "https://www.uml.edu/engineering/electrical-computer/faculty-staff/"),
-    ("Rochester Institute of Technology", "ECE", "https://www.rit.edu/engineering/department-electrical-and-microelectronic-engineering"),
-    ("University of Central Florida", "ECE", "https://www.ece.ucf.edu/faculty/"),
-    ("Florida Institute of Technology", "ECE", "https://www.fit.edu/electrical-computer-engineering/faculty-profiles/"),
-    ("University of Rhode Island", "ECBE", "https://web.uri.edu/engineering/meet/ecbe/"),
-    ("University of Vermont", "EBE", "https://www.uvm.edu/cems/ee/faculty"),
-    ("University of Nebraska-Lincoln", "ECE", "https://engineering.unl.edu/ece/faculty/"),
-    ("Oklahoma State University", "ECE", "https://ceat.okstate.edu/ece/faculty.html"),
-    ("Kansas State University", "ECE", "https://www.ece.k-state.edu/people/faculty/"),
-    ("University of Missouri", "EECS", "https://engineering.missouri.edu/departments/eecs/faculty/"),
-    ("Missouri S&T", "ECE", "https://ece.mst.edu/facultyandstaff/"),
-    ("UNLV", "ECE", "https://www.unlv.edu/ece/people/faculty"),
-    ("Portland State University", "ECE", "https://www.pdx.edu/electrical-computer-engineering/faculty"),
-    ("University of Texas at Arlington", "EE", "https://www.uta.edu/academics/schools-colleges/engineering/departments/electrical/people/faculty"),
-    ("University of Colorado Denver", "EE", "https://engineering.ucdenver.edu/electrical/faculty-staff"),
-    ("Northern Arizona University", "SICCS", "https://nau.edu/siccs/faculty-and-staff/"),
-    ("Utah State University", "ECE", "https://ece.usu.edu/people/faculty/index"),
-
-    # ═══ US UNIVERSITIES — QS 400-600 Bracket (Other) ═══
-    ("Binghamton University", "ECE", "https://www.binghamton.edu/ece/people/faculty.html"),
-    ("Wayne State University", "ECE", "https://engineering.wayne.edu/ece/faculty"),
-    ("Florida International University", "ECE", "https://ece.fiu.edu/faculty-and-staff/faculty/"),
-    ("George Mason University", "ECE", "https://ece.gmu.edu/faculty-directory/"),
-    ("University of New Mexico", "ECE", "https://ece.unm.edu/faculty-staff/index.html"),
-    ("Oregon State University", "EECS", "https://eecs.oregonstate.edu/people"),
-    ("Florida State University", "ECE", "https://www.eng.famu.fsu.edu/ece/people"),
-    ("University at Buffalo", "EE", "https://engineering.buffalo.edu/electrical/people/faculty-directory.html"),
-    ("UC Riverside", "ECE", "https://www.ece.ucr.edu/people/faculty"),
-    ("UC Santa Cruz", "ECE", "https://engineering.ucsc.edu/departments/electrical-and-computer-engineering/people/"),
-    ("Indiana University Bloomington", "ISE", "https://luddy.indiana.edu/contact/faculty/index.html"),
-    ("Lehigh University", "ECE", "https://engineering.lehigh.edu/ece/faculty"),
-    ("West Virginia University", "LCSEE", "https://lcsee.statler.wvu.edu/faculty-staff/faculty"),
-    ("Auburn University", "ECE", "https://www.eng.auburn.edu/ece/faculty-staff/index.html"),
-    ("Clarkson University", "ECE", "https://www.clarkson.edu/academics/engineering/electrical-computer-engineering/faculty-staff"),
-
-    # ═══ AUSTRALIAN UNIVERSITIES — QS 300-600 Bracket ═══
-    ("Swinburne University", "Engineering", "https://www.swinburne.edu.au/research/centres-groups-clinics/"),
-    ("Deakin University", "Engineering", "https://www.deakin.edu.au/school-of-engineering/our-research"),
-    ("James Cook University", "Engineering", "https://www.jcu.edu.au/college-of-science-and-engineering/staff"),
-    ("University of Newcastle", "Engineering", "https://www.newcastle.edu.au/school/engineering"),
-    ("Macquarie University", "Engineering", "https://www.mq.edu.au/faculty-of-science-and-engineering/departments-and-schools/school-of-engineering/our-people"),
-    ("Flinders University", "Engineering", "https://www.flinders.edu.au/college-science-engineering/our-people"),
-    ("University of Tasmania", "Engineering", "https://www.utas.edu.au/science-engineering-technology/engineering/people"),
-    ("La Trobe University", "Engineering", "https://www.latrobe.edu.au/school-computing-engineering-and-mathematical-sciences/staff"),
-    ("Western Sydney University", "Engineering", "https://www.westernsydney.edu.au/schools/scem/people/academic_staff"),
-    ("University of Canberra", "SIT", "https://www.canberra.edu.au/about-uc/faculties/scitech/staff"),
-    ("Murdoch University", "Engineering", "https://www.murdoch.edu.au/school-of-engineering-and-energy/staff"),
-    ("University of South Australia", "Engineering", "https://people.unisa.edu.au/"),
-    ("Queensland University of Technology", "Engineering", "https://www.qut.edu.au/about/our-people/academic-profiles"),
-    ("University of Wollongong", "EIS", "https://www.uow.edu.au/engineering-information-sciences/about-us/our-people/"),
-    ("Charles Darwin University", "Engineering", "https://www.cdu.edu.au/science-technology/engineering/staff"),
-    ("Edith Cowan University", "Engineering", "https://www.ecu.edu.au/schools/engineering/staff"),
-    ("Victoria University", "Engineering", "https://www.vu.edu.au/about-vu/our-teaching-research-staff"),
-    ("Charles Sturt University", "Engineering", "https://science-health.csu.edu.au/schools/engineering/staff"),
-    ("Southern Cross University", "Engineering", "https://www.scu.edu.au/school-of-engineering-and-technology/our-people/"),
-    ("Federation University", "Engineering", "https://federation.edu.au/faculties-and-schools/school-of-science-engineering-and-it/staff-profiles"),
-    ("University of New England", "Science/Tech", "https://www.une.edu.au/about-une/faculty-of-science-agriculture-business-and-law/school-of-science-and-technology/staff"),
-    ("USC Australia", "Science/Eng", "https://www.usc.edu.au/about/structure/schools/school-of-science-technology-and-engineering/staff"),
-]
-
-
 def main():
     logger.info("=" * 60)
     logger.info("AdvisorScout v2 - Starting")
     logger.info("=" * 60)
     
     finder = ProfessorFinder()
-    finder.update_status(phase="Phase 1: Scraping Directories", total_urls=len(FACULTY_URLS))
+    targets = load_universities()
+    finder.update_status(phase="Phase 1: Scraping Directories", total_urls=len(targets))
 
     # Phase 1: Scrape faculty directories
     logger.info("PHASE 1: Scraping faculty directories...")
-    for i, (uni, dept, url) in enumerate(FACULTY_URLS, 1):
-        logger.info(f"\n[{i}/{len(FACULTY_URLS)}] Scraping: {uni} - {dept}")
+    for i, (uni, dept, url) in enumerate(targets, 1):
+        logger.info(f"\n[{i}/{len(targets)}] Scraping: {uni} - {dept}")
         finder.update_status(current_index=i, current_university=uni)
         try:
             profs = finder.scrape_faculty_page(url, uni, dept)
@@ -508,7 +436,7 @@ def main():
     generate_html_report(scored, html_path)
     export_csv(scored, csv_path)
 
-    finder.update_status(phase="Completed", current_index=len(FACULTY_URLS))
+    finder.update_status(phase="Completed", current_index=len(targets))
     logger.info("\nDONE!")
 
     try:
