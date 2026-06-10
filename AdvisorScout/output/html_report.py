@@ -10,7 +10,12 @@ from typing import List, Dict
 from datetime import datetime
 
 from models import Professor
-from config import get_rank_bracket
+
+try:
+    from config import get_rank_bracket
+except ImportError:
+    def get_rank_bracket(university: str) -> str:
+        return "Geo"
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +38,7 @@ def generate_html_report(professors: List[Professor], output_path: str):
         for p in sorted(profs, key=lambda x: x.match_score, reverse=True):
             pubs_html = ""
             for pub in p.publications[:5]:
-                cite = f' <span class="cite">({pub.citations} citations)</span>' if pub.citations else ""
+                cite = f' <span class="cite">({pub.citations} <span data-i18n="card.citations">citations</span>)</span>' if pub.citations else ""
                 year = f' <span class="year">{pub.year}</span>' if pub.year else ""
                 venue = f' — <em>{pub.venue}</em>' if pub.venue else ""
                 link = f'<a href="{pub.url}" target="_blank">' if pub.url else ""
@@ -42,7 +47,7 @@ def generate_html_report(professors: List[Professor], output_path: str):
 
             pubs_section = ""
             if pubs_html:
-                pubs_section = f'''<div class="section"><h4>📄 Recent Publications</h4><ul class="pubs">{pubs_html}</ul></div>'''
+                pubs_section = f'''<div class="section"><h4>📄 <span data-i18n="card.pubs">Recent Publications</span></h4><ul class="pubs">{pubs_html}</ul></div>'''
 
             interests_html = ""
             if p.research_interests:
@@ -52,17 +57,17 @@ def generate_html_report(professors: List[Professor], output_path: str):
             matched_html = ""
             if p.matched_keywords:
                 tags = "".join(f'<span class="tag matched">{_esc(k)}</span>' for k in p.matched_keywords[:10])
-                matched_html = f'<div class="section"><h4>🎯 Matched Keywords</h4><div class="tags">{tags}</div></div>'
+                matched_html = f'<div class="section"><h4>🎯 <span data-i18n="card.matched_kw">Matched Keywords</span></h4><div class="tags">{tags}</div></div>'
 
-            email_html = f'<a href="mailto:{_esc(p.email)}" class="btn email-btn">📧 {_esc(p.email)}</a>' if p.email else '<span class="no-email">Email not found</span>'
-            profile_html = f'<a href="{_esc(p.profile_url)}" target="_blank" class="btn profile-btn">🔗 Profile</a>' if p.profile_url else ""
-            scholar_html = f'<a href="{_esc(p.scholar_url)}" target="_blank" class="btn scholar-btn">🎓 Scholar</a>' if p.scholar_url else ""
+            email_html = f'<a href="mailto:{_esc(p.email)}" class="btn email-btn">📧 <span data-i18n="card.email">Email</span>: {_esc(p.email)}</a>' if p.email else '<span class="no-email"><span data-i18n="card.no_email">Email not found</span></span>'
+            profile_html = f'<a href="{_esc(p.profile_url)}" target="_blank" class="btn profile-btn">🔗 <span data-i18n="card.profile">Profile</span></a>' if p.profile_url else ""
+            scholar_html = f'<a href="{_esc(p.scholar_url)}" target="_blank" class="btn scholar-btn">🎓 <span data-i18n="card.scholar">Scholar</span></a>' if p.scholar_url else ""
 
             badge_class = "high" if p.match_score >= 3 else "good" if p.match_score >= 2 else "partial"
             metrics = ""
             if p.h_index or p.citations_total:
-                h = f'<span class="metric">h-index: {p.h_index}</span>' if p.h_index else ""
-                c = f'<span class="metric">Citations: {p.citations_total:,}</span>' if p.citations_total else ""
+                h = f'<span class="metric"><span data-i18n="card.h_index">h-index</span>: {p.h_index}</span>' if p.h_index else ""
+                c = f'<span class="metric"><span data-i18n="card.citations_total">Citations</span>: {p.citations_total:,}</span>' if p.citations_total else ""
                 metrics = f'<div class="metrics">{h}{c}</div>'
 
             bio_html = f'<p class="bio">{_esc(p.bio[:400])}</p>' if p.bio else ""
@@ -217,23 +222,120 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 ::-webkit-scrollbar-thumb{{background:var(--border);border-radius:10px}}
 ::-webkit-scrollbar-thumb:hover{{background:rgba(255,255,255,0.15)}}
 @media(max-width:900px){{body{{flex-direction:column;overflow:auto}}.sidebar{{width:100%;height:auto;overflow:visible;border-right:none;border-bottom:1px solid var(--border)}}.main-content{{height:auto;overflow:visible;padding:1.5rem}}.cards-grid{{grid-template-columns:1fr}}}}
-</style></head>
+</style>
+<script>
+const I18N = {{
+  'app.title': {{ en: 'Global Geoscience Advisor Finder', zh: '全球地学导师搜索工具' }},
+  'app.subtitle': {{ en: 'Target: 150+ Universities Worldwide', zh: '覆盖：全球150+所大学' }},
+  'btn.start': {{ en: 'Start New Scan', zh: '开始新扫描' }},
+  'btn.start.running': {{ en: 'Scanning in progress...', zh: '扫描进行中...' }},
+  'btn.start.done': {{ en: 'Scan Complete (Click to restart)', zh: '扫描完成（点击重新开始）' }},
+  'btn.config': {{ en: 'Configure Keywords', zh: '配置关键词' }},
+  'status.idle': {{ en: 'Idle', zh: '空闲' }},
+  'status.ready': {{ en: 'Ready to begin', zh: '准备开始' }},
+  'stat.total': {{ en: 'Total Professors', zh: '教授总数' }},
+  'stat.unis': {{ en: 'Universities', zh: '大学数量' }},
+  'stat.email': {{ en: 'With Email', zh: '有邮箱' }},
+  'filter.search': {{ en: 'Search name, interest, university...', zh: '搜索姓名、研究方向、大学...' }},
+  'filter.match': {{ en: 'Match Level', zh: '匹配等级' }},
+  'filter.all': {{ en: 'All Matches', zh: '全部匹配' }},
+  'filter.high': {{ en: 'High Match', zh: '高度匹配' }},
+  'filter.good': {{ en: 'Good Match', zh: '良好匹配' }},
+  'filter.partial': {{ en: 'Partial Match', zh: '部分匹配' }},
+  'filter.region': {{ en: 'Region', zh: '地区' }},
+  'filter.worldwide': {{ en: 'Worldwide', zh: '全球' }},
+  'filter.us': {{ en: 'United States', zh: '美国' }},
+  'filter.australia': {{ en: 'Australia', zh: '澳大利亚' }},
+  'filter.contact': {{ en: 'Contact', zh: '联系方式' }},
+  'filter.has_email': {{ en: 'Has Email', zh: '有邮箱' }},
+  'card.scholar': {{ en: 'Scholar', zh: '学术档案' }},
+  'card.profile': {{ en: 'Profile', zh: '个人主页' }},
+  'card.email': {{ en: 'Email', zh: '邮箱' }},
+  'card.no_email': {{ en: 'Email not found', zh: '未找到邮箱' }},
+  'card.matched_kw': {{ en: 'Matched Keywords', zh: '匹配关键词' }},
+  'card.pubs': {{ en: 'Recent Publications', zh: '近期论文' }},
+  'card.citations': {{ en: 'citations', zh: '引用' }},
+  'card.h_index': {{ en: 'h-index', zh: 'h指数' }},
+  'card.citations_total': {{ en: 'Citations', zh: '总引用' }},
+  'modal.title': {{ en: 'Configure Keywords', zh: '配置关键词' }},
+  'modal.loading': {{ en: 'Loading keywords...', zh: '加载关键词中...' }},
+  'modal.fail': {{ en: 'Failed to load keywords.', zh: '加载关键词失败。' }},
+  'modal.save': {{ en: 'Save Configuration', zh: '保存配置' }},
+  'modal.cancel': {{ en: 'Cancel', zh: '取消' }},
+  'modal.saving': {{ en: 'Saving...', zh: '保存中...' }},
+  'modal.saved': {{ en: 'Configuration saved! Next scan will use new keywords.', zh: '配置已保存！下次扫描将使用新关键词。' }},
+  'modal.save_fail': {{ en: 'Failed to save configuration.', zh: '保存配置失败。' }},
+  'footer.generated': {{ en: 'Generated on', zh: '生成于' }},
+}};
+
+function __(key) {{
+  const entry = I18N[key];
+  if (!entry) return key;
+  return entry[currentLang] || entry.en || key;
+}}
+
+let currentLang = 'en';
+
+function initLanguage() {{
+  const saved = localStorage.getItem('advisor-scout-lang');
+  if (saved && (saved === 'en' || saved === 'zh')) {{
+    currentLang = saved;
+  }} else if (navigator.language.startsWith('zh')) {{
+    currentLang = 'zh';
+  }} else {{
+    currentLang = 'en';
+  }}
+  applyLanguage();
+  updateLangToggle();
+}}
+
+function toggleLanguage() {{
+  currentLang = currentLang === 'en' ? 'zh' : 'en';
+  localStorage.setItem('advisor-scout-lang', currentLang);
+  applyLanguage();
+  updateLangToggle();
+}}
+
+function applyLanguage() {{
+  document.querySelectorAll('[data-i18n]').forEach(el => {{
+    const key = el.dataset.i18n;
+    const text = __(key);
+    if (el.tagName === 'INPUT' && el.type === 'text') {{
+      el.placeholder = text;
+    }} else {{
+      el.textContent = text;
+    }}
+  }});
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {{
+    el.placeholder = __(el.dataset.i18nPlaceholder);
+  }});
+}}
+
+function updateLangToggle() {{
+  const btn = document.getElementById('lang-toggle');
+  if (btn) {{
+    btn.innerHTML = currentLang === 'en' ? '🌐 中文' : '🌐 English';
+  }}
+}}
+
+document.addEventListener('DOMContentLoaded', initLanguage);
+</script></head>
 <body>
 <div class="sidebar">
   <div class="hero">
-    <h1>🎓 PhD Finder</h1>
-    <p>Target: 100+ Accessible Universities</p>
+    <h1 data-i18n="app.title">🎓 Global Geoscience Advisor Finder</h1>
+    <p data-i18n="app.subtitle">Target: 150+ Universities Worldwide</p>
   </div>
 
   <!-- START BUTTON -->
   <div class="start-box">
-    <button class="start-btn" id="start-btn">
+    <button class="start-btn" id="start-btn" data-i18n="btn.start">
         🚀 Start New Scan
     </button>
   </div>
 
   <div class="config-box">
-    <button class="config-btn" id="config-btn">
+    <button class="config-btn" id="config-btn" data-i18n="btn.config">
         ⚙️ Configure Keywords
     </button>
   </div>
@@ -241,48 +343,55 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
   <!-- LIVE PROGRESS SECTION -->
   <div class="live-status" id="live-status">
     <div class="status-header">
-        <span class="status-title" id="status-phase">Idle</span>
+        <span class="status-title" id="status-phase" data-i18n="status.idle">Idle</span>
         <span class="status-percent" id="status-percent">0%</span>
     </div>
     <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="status-bar"></div>
     </div>
-    <span class="status-text" id="status-uni">Ready to begin</span>
+    <span class="status-text" id="status-uni" data-i18n="status.ready">Ready to begin</span>
   </div>
   
   <div class="stats">
-    <div class="stat wide"><div class="num" id="stat-total">{total}</div><div class="label">Total Professors</div></div>
-    <div class="stat"><div class="num" id="stat-unis">{unis}</div><div class="label">Universities</div></div>
-    <div class="stat"><div class="num" id="stat-email">{with_email}</div><div class="label">With Email</div></div>
+    <div class="stat wide"><div class="num" id="stat-total">{total}</div><div class="label" data-i18n="stat.total">Total Professors</div></div>
+    <div class="stat"><div class="num" id="stat-unis">{unis}</div><div class="label" data-i18n="stat.unis">Universities</div></div>
+    <div class="stat"><div class="num" id="stat-email">{with_email}</div><div class="label" data-i18n="stat.email">With Email</div></div>
   </div>
 
   <div class="controls">
     <div class="filter-group">
         <span class="filter-label">Search</span>
-        <input type="text" class="search-box" id="search" placeholder="🔍 Name, Interest, University...">
+        <input type="text" class="search-box" id="search" data-i18n-placeholder="filter.search" placeholder="🔍 Search name, interest, university...">
     </div>
 
     <div class="filter-group">
-        <span class="filter-label">Match Level</span>
-        <button class="filter-btn active" data-filter="all">🌐 All Matches <span class="count-badge">{total}</span></button>
-        <button class="filter-btn" data-filter="high">🔥 High Match <span class="count-badge">{high}</span></button>
-        <button class="filter-btn" data-filter="good">⭐ Good Match <span class="count-badge">{good}</span></button>
+        <span class="filter-label" data-i18n="filter.match">Match Level</span>
+        <button class="filter-btn active" data-filter="all" data-i18n="filter.all">🌐 All Matches <span class="count-badge">{total}</span></button>
+        <button class="filter-btn" data-filter="high" data-i18n="filter.high">🔥 High Match <span class="count-badge">{high}</span></button>
+        <button class="filter-btn" data-filter="good" data-i18n="filter.good">⭐ Good Match <span class="count-badge">{good}</span></button>
     </div>
 
     <div class="filter-group">
-        <span class="filter-label">Region</span>
-        <button class="filter-btn" data-region="all" id="reg-all">🌍 Worldwide</button>
-        <button class="filter-btn" data-region="us" id="reg-us">🇺🇸 United States <span class="count-badge">{us_count}</span></button>
-        <button class="filter-btn" data-region="australia" id="reg-au">🇦🇺 Australia <span class="count-badge">{au_count}</span></button>
+        <span class="filter-label" data-i18n="filter.region">Region</span>
+        <button class="filter-btn" data-region="all" id="reg-all" data-i18n="filter.worldwide">🌍 Worldwide</button>
+        <button class="filter-btn" data-region="us" id="reg-us" data-i18n="filter.us">🇺🇸 United States <span class="count-badge">{us_count}</span></button>
+        <button class="filter-btn" data-region="australia" id="reg-au" data-i18n="filter.australia">🇦🇺 Australia <span class="count-badge">{au_count}</span></button>
     </div>
     
     <div class="filter-group">
-        <span class="filter-label">Contact</span>
-        <button class="filter-btn" data-filter="email">📧 Has Email <span class="count-badge">{with_email}</span></button>
+        <span class="filter-label" data-i18n="filter.contact">Contact</span>
+        <button class="filter-btn" data-filter="email" data-i18n="filter.has_email">📧 Has Email <span class="count-badge">{with_email}</span></button>
     </div>
   </div>
 
-  <div class="footer">Generated on<br>{datetime.now().strftime("%b %d, %Y at %I:%M %p")}</div>
+  <div style="text-align:center;padding:1rem 0;">
+    <button id="lang-toggle" onclick="toggleLanguage()" style="background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:0.6rem 1.2rem;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;width:100%"
+        onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='var(--glass)'">
+        🌐 中文
+    </button>
+  </div>
+
+  <div class="footer"><span data-i18n="footer.generated">Generated on</span><br>{datetime.now().strftime("%b %d, %Y at %I:%M %p")}</div>
 </div>
 
 <div class="main-content">
@@ -295,15 +404,15 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 <div class="modal-overlay" id="config-modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Configure Keywords</h2>
+      <h2 data-i18n="modal.title">Configure Keywords</h2>
       <button class="close-modal" id="close-modal">&times;</button>
     </div>
     <div id="keywords-container">
         <!-- Dynamic keyword inputs will go here -->
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" id="btn-cancel">Cancel</button>
-      <button class="btn-save" id="btn-save">Save Configuration</button>
+      <button class="btn-cancel" id="btn-cancel" data-i18n="modal.cancel">Cancel</button>
+      <button class="btn-save" id="btn-save" data-i18n="modal.save">Save Configuration</button>
     </div>
   </div>
 </div>
@@ -379,8 +488,8 @@ document.getElementById('reg-all').classList.add('active');
 startBtn.addEventListener('click', async () => {{
     if (startBtn.classList.contains('running')) return;
     
-    if (confirm('Start a fresh scan of all 100+ universities? This may take 10-20 minutes.')) {{
-        startBtn.innerText = '⚙️ Scraping in progress...';
+    if (confirm((currentLang === 'zh' ? '确认开始全新扫描所有大学？这可能需要10-20分钟。' : 'Start a fresh scan of all universities? This may take 10-20 minutes.'))) {{
+        startBtn.innerText = '⚙️ ' + __('btn.start.running');
         startBtn.classList.add('running');
         try {{
             const response = await fetch('/start');
@@ -388,7 +497,7 @@ startBtn.addEventListener('click', async () => {{
             console.log('Scraper started', data);
         }} catch (e) {{
             alert('Failed to start scraper. Make sure app.py is running.');
-            startBtn.innerText = '🚀 Start New Scan';
+            startBtn.innerText = '🚀 ' + __('btn.start');
             startBtn.classList.remove('running');
         }}
     }}
@@ -403,7 +512,7 @@ const btnSave = document.getElementById('btn-save');
 const kwContainer = document.getElementById('keywords-container');
 
 configBtn.addEventListener('click', async () => {{
-    kwContainer.innerHTML = '<p style="text-align:center;padding:2rem;">Loading keywords...</p>';
+    kwContainer.innerHTML = '<p style="text-align:center;padding:2rem;"><span data-i18n="modal.loading">Loading keywords...</span></p>';
     configModal.style.display = 'flex';
     
     try {{
@@ -421,7 +530,7 @@ configBtn.addEventListener('click', async () => {{
             kwContainer.appendChild(group);
         }});
     }} catch (e) {{
-        kwContainer.innerHTML = '<p style="color:var(--red);text-align:center;padding:2rem;">Failed to load keywords.</p>';
+        kwContainer.innerHTML = '<p style="color:var(--red);text-align:center;padding:2rem;"><span data-i18n="modal.fail">Failed to load keywords.</span></p>';
     }}
 }});
 
@@ -439,7 +548,7 @@ btnSave.addEventListener('click', async () => {{
         newKeywords[category] = list;
     }});
     
-    btnSave.innerText = '⌛ Saving...';
+    btnSave.innerText = '⌛ ' + __('modal.saving');
     btnSave.disabled = true;
     
     try {{
@@ -450,14 +559,14 @@ btnSave.addEventListener('click', async () => {{
         }});
         if (response.ok) {{
             hideModal();
-            alert('Configuration saved! Next scan will use new keywords.');
+            alert(__('modal.saved'));
         }} else {{
-            alert('Failed to save configuration.');
+            alert(__('modal.save_fail'));
         }}
     }} catch (e) {{
         alert('Error saving configuration.');
     }} finally {{
-        btnSave.innerText = 'Save Configuration';
+        btnSave.innerText = __('modal.save');
         btnSave.disabled = false;
     }}
 }});
@@ -482,10 +591,10 @@ async function pollStatus() {{
             document.getElementById('stat-total').innerText = status.professors_total;
             
             if (status.phase !== 'Completed' && status.phase !== 'Idle') {{
-                startBtn.innerText = '⚙️ Scraping in progress...';
+                startBtn.innerText = '⚙️ ' + __('btn.start.running');
                 startBtn.classList.add('running');
             }} else if (status.phase === 'Completed') {{
-                startBtn.innerText = '✅ Scan Complete (Click to restart)';
+                startBtn.innerText = '✅ ' + __('btn.start.done');
                 startBtn.classList.remove('running');
                 // Optional: reload after some time
                 // location.reload();
