@@ -57,13 +57,6 @@ def generate_html_report(professors: List[Professor], output_path: str):
     """Generate a stunning self-contained HTML report with live progress tracking."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Collect all interests for tag filter
-    all_interests = set()
-    for p in professors:
-        for kw in p.research_interests:
-            if len(kw) > 2:
-                all_interests.add(kw.strip())
-
     # Flat list sorted by score
     professor_cards = ""
     for i, p in enumerate(sorted(professors, key=lambda x: x.match_score, reverse=True)):
@@ -112,16 +105,13 @@ def generate_html_report(professors: List[Professor], output_path: str):
 
         professor_cards += f'''
 <div class="card" data-score="{p.match_score}" data-name="{_esc(p.name.lower())}" data-uni="{_esc(p.university.lower())}" data-country="{_esc(country_display.lower().replace(' ','-'))}" data-id="{prof_id}">
+  <button class="bookmark-btn" id="bm-{prof_id}" onclick="event.stopPropagation();toggleBookmark('{prof_id}')" title="Bookmark">☆</button>
   <div class="card-header" onclick="openDrawer('{prof_id}')">
-    <div class="card-left">
-      <button class="bookmark-btn" id="bm-{prof_id}" onclick="event.stopPropagation();toggleBookmark('{prof_id}','{_esc(p.name)}','{_esc(p.university)}')" title="Bookmark">☆</button>
-      <div>
-        <h3 class="prof-name">{_esc(p.name)}</h3>
-        <p class="prof-title">{country_display} | {_esc(p.university)}{(' (' + qs_rank + ')' if qs_rank else '')}</p>
-        {interests_html}
-      </div>
+    <div>
+      <h3 class="prof-name">{_esc(p.name)}</h3>
+      <p class="prof-title">{country_display} | {_esc(p.university)}{(' (' + qs_rank + ')' if qs_rank else '')}</p>
     </div>
-    <div><span class="badge {badge_class}">{p.match_level} ({p.match_score})</span></div>
+    <span class="badge {badge_class}">{p.match_level} ({p.match_score})</span>
   </div>
 </div>
 
@@ -258,10 +248,8 @@ body{{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);lin
 .tag-filter.active{{background:var(--accent);color:white;border-color:var(--accent)}}
 
 /* Bookmark */
-.bookmark-btn{{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2);padding:0;margin-right:.5rem;transition:all .2s;flex-shrink:0}}
-.bookmark-btn:hover,.bookmark-btn.bookmarked{{color:#f5d442;transform:scale(1.2)}}
-.card-left{{display:flex;align-items:flex-start;gap:0}}
-.card-left>div{{flex:1}}
+.bookmark-btn{{position:absolute;top:.8rem;left:.8rem;z-index:2;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text2);padding:.2rem;transition:all .2s}}
+.bookmark-btn:hover,.bookmark-btn.bookmarked{{color:#f5d442;transform:scale(1.3)}}
 .tag-input:focus{{outline:none;border-color:var(--accent)!important}}
 .prof-name{{font-size:1.25rem;font-weight:700;letter-spacing:-0.5px}}
 .prof-title{{color:var(--text2);font-size:.8rem;margin-top:2px}}
@@ -513,13 +501,16 @@ function loadBookmarks(){{
 }}
 function saveBookmarks(data){{ localStorage.setItem('advisor-bookmarks',JSON.stringify(data)); }}
 
-function toggleBookmark(id,name,uni){{
+function toggleBookmark(id){{
     const bm = loadBookmarks();
     const btn = document.getElementById('bm-'+id);
+    if(!btn) return;
+    const card = document.querySelector('.card[data-id=\"'+id+'\"]');
     if(bm[id]){{
         delete bm[id]; btn.classList.remove('bookmarked'); btn.textContent='☆';
     }}else{{
-        bm[id]={{name:name, uni:uni, tags:[]}}; btn.classList.add('bookmarked'); btn.textContent='★';
+        bm[id]={{name:card?card.dataset.name:'', uni:card?card.dataset.uni:'', tags:[]}};
+        btn.classList.add('bookmarked'); btn.textContent='★';
     }}
     saveBookmarks(bm); updateBmUI(); applyFilters();
 }}
@@ -648,7 +639,8 @@ const btnCancel = document.getElementById('btn-cancel');
 const btnSave = document.getElementById('btn-save');
 const kwContainer = document.getElementById('keywords-container');
 
-configBtn.addEventListener('click', async () => {{
+if(!configBtn||!configModal){{ console.error('Config modal elements missing'); }}
+configBtn && configBtn.addEventListener('click', async () => {{
     kwContainer.innerHTML = '<p style="text-align:center;padding:2rem;"><span data-i18n="modal.loading">Loading keywords...</span></p>';
     configModal.style.display = 'flex';
     
@@ -671,9 +663,9 @@ configBtn.addEventListener('click', async () => {{
     }}
 }});
 
-const hideModal = () => configModal.style.display = 'none';
-closeModal.addEventListener('click', hideModal);
-btnCancel.addEventListener('click', hideModal);
+const hideModal = () => {{ if(configModal) configModal.style.display = 'none'; }};
+if(closeModal) closeModal.addEventListener('click', hideModal);
+if(btnCancel) btnCancel.addEventListener('click', hideModal);
 
 btnSave.addEventListener('click', async () => {{
     const textareas = kwContainer.querySelectorAll('textarea');
